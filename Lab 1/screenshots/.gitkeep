@@ -1,0 +1,39 @@
+# Screenshots Directory
+
+Place all report screenshots in this directory with the following naming convention:
+
+- 01_project_structure.png
+- 02_dockerfile.png
+- 03_docker_compose.png
+- 04_docker_build.png
+- 05_docker_up.png
+- 06_docker_ps.png
+- 07_server_logs.png
+- 08_collection_contents.png
+- 09_server_code.png
+- 10_404_terminal.png
+- 11_404_browser.png
+- 12_html_terminal.png
+- 13_html_browser.png
+- 14_html_logs.png
+- 15_png_terminal.png
+- 16_png_file.png
+- 17_png_browser.png
+- 18_pdf_terminal.png
+- 19_pdf_file.png
+- 20_pdf_browser.png
+- 21_client_code.png
+- 22_client_usage.png
+- 23_downloads_directory.png
+- 24_root_dir_terminal.png
+- 25_root_dir_browser.png
+- 26_books_dir_browser.png
+- 27_research_papers_browser.png
+- 28_directory_listing_code.png
+- 29_ipconfig.png
+- 30_friend_server_browser.png
+- 31_friend_download_terminal.png
+- 32_friend_downloads_directory.png
+- 33_complete_logs.png
+- 34_security_code.png
+- 35_error_handling_code.png

@@ -1,0 +1,12 @@
+services:
+  http-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: http_server_lab1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./collection:/app/collection:ro
+    command: python -u server.py collection
+    restart: unless-stopped
