@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Programming Lab 1 - File Server</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .image-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+        .feature-card h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .links {
+            margin-top: 30px;
+        }
+        .links a {
+            display: inline-block;
+            margin: 10px 10px 10px 0;
+            padding: 12px 24px;
+            background-color: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .links a:hover {
+            background-color: #764ba2;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        .author {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Network Programming - Lab 1</h1>
+        <h2>HTTP File Server with TCP Sockets</h2>
+        
+        <div class="info-box">
+            <p><strong>Course:</strong> Network Programming (PR)</p>
+            <p><strong>Laboratory:</strong> Lab 1 - HTTP File Server Implementation</p>
+            <p><strong>Technologies:</strong> Python, TCP Sockets, HTTP/1.1 Protocol, Docker</p>
+        </div>
+
+        <h2>📚 Project Overview</h2>
+        <p>
+            This laboratory work demonstrates the implementation of a simple HTTP file server 
+            using raw TCP sockets in Python. The server handles multiple file types including 
+            HTML, PNG images, and PDF documents. It also supports directory listing for 
+            nested directories and includes a custom HTTP client for testing.
+        </p>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>🔧 Core Features</h3>
+                <ul>
+                    <li>HTTP/1.1 Protocol</li>
+                    <li>TCP Socket Communication</li>
+                    <li>Multiple File Types</li>
+                    <li>Error Handling (404)</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>⭐ Bonus Features</h3>
+                <ul>
+                    <li>HTTP Client (+2 pts)</li>
+                    <li>Directory Listing (+2 pts)</li>
+                    <li>Friend Server Browse (+1 pt)</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>🐳 Docker Support</h3>
+                <ul>
+                    <li>Dockerfile</li>
+                    <li>Docker Compose</li>
+                    <li>Containerized Deployment</li>
+                    <li>Port Mapping</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>🖼️ Embedded Image Example</h2>
+        <div class="image-container">
+            <p><strong>Sample PNG Image (served by our HTTP server):</strong></p>
+            <img src="network_diagram.png" alt="Network Diagram" />
+            <p style="color: #6c757d; margin-top: 15px; font-size: 14px;">
+                This image demonstrates that our server correctly handles image file requests
+            </p>
+        </div>
+
+        <h2>📖 Available Resources</h2>
+        <div class="links">
+            <a href="/Books/">📚 Browse Books Directory</a>
+            <a href="/server_icon.png">🖼️ View Server Icon</a>
+            <a href="/Books/Computer_Networking_Kurose_Ross.pdf">📄 Networking Textbook</a>
+        </div>
+
+        <h2>💻 Technical Implementation</h2>
+        <p>
+            The server is built using Python's <code>socket</code> module for low-level 
+            network communication. It parses HTTP requests, determines the requested resource,
+            and sends appropriate HTTP responses with correct headers and content types.
+        </p>
+
+        <div class="info-box">
+            <h3>Supported Operations:</h3>
+            <ul>
+                <li><strong>File Serving:</strong> HTML, PNG, PDF with correct MIME types</li>
+                <li><strong>Directory Listing:</strong> Auto-generated HTML pages for directories</li>
+                <li><strong>Error Handling:</strong> 404 Not Found, 403 Forbidden, 405 Method Not Allowed</li>
+                <li><strong>Security:</strong> Path traversal protection</li>
+            </ul>
+        </div>
+
+        <h2>🚀 How to Run</h2>
+        <p><strong>Using Docker Compose:</strong></p>
+        <pre style="background-color: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto;">docker-compose up --build</pre>
+        
+        <p><strong>Using Python directly:</strong></p>
+        <pre style="background-color: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto;">python server.py collection</pre>
+
+        <p><strong>Testing with the client:</strong></p>
+        <pre style="background-color: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto;">python client.py localhost 8080 /index.html ./downloads</pre>
+
+        <div class="author">
+            <p>📝 Network Programming Laboratory Work</p>
+            <p>Technical University of Moldova (UTM) - Faculty of Computers, Informatics and Microelectronics</p>
+        </div>
+    </div>
+</body>
+</html>
