@@ -1,0 +1,67 @@
+services:
+  # HTTP Server
+  server:
+    build: .
+    container_name: lab2_server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./collection:/app/collection:ro  # Mount collection directory as read-only
+      - ./server.py:/app/server.py:ro
+    command: python server.py /app/collection
+    networks:
+      - lab2_network
+    restart: unless-stopped
+
+  # HTTP Server with delay (for testing concurrency)
+  server_delayed:
+    build: .
+    container_name: lab2_server_delayed
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./collection:/app/collection:ro
+      - ./server.py:/app/server.py:ro
+    command: python server.py /app/collection --delay 1
+    networks:
+      - lab2_network
+    profiles:
+      - testing
+    restart: unless-stopped
+
+  # HTTP Server without locks (for race condition demo)
+  server_no_locks:
+    build: .
+    container_name: lab2_server_no_locks
+    ports:
+      - "8082:8080"
+    volumes:
+      - ./collection:/app/collection:ro
+      - ./server.py:/app/server.py:ro
+    command: python server.py /app/collection --no-lock
+    networks:
+      - lab2_network
+    profiles:
+      - testing
+    restart: unless-stopped
+
+  # Test client for making requests
+  client:
+    build: .
+    container_name: lab2_client
+    volumes:
+      - ./downloads:/app/downloads
+      - ./client.py:/app/client.py:ro
+      - ./test_concurrent.py:/app/test_concurrent.py:ro
+      - ./test_rate_limit.py:/app/test_rate_limit.py:ro
+    networks:
+      - lab2_network
+    depends_on:
+      - server
+    profiles:
+      - testing
+    command: sleep infinity  # Keep container running for manual testing
+
+networks:
+  lab2_network:
+    driver: bridge
