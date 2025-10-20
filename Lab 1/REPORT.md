@@ -404,7 +404,7 @@ ipconfig
 
 ### 8.2. Accessing Friend's Server in Browser
 
-**URL:** `http://192.168.1.XXX:8080`
+**URL:** `http://10.90.58.108:8000/`
 
 ![Friend's Server - Browser](screenshots/30_friend_server_browser.png)
 
@@ -416,7 +416,7 @@ ipconfig
 
 **Command:**
 ```powershell
-python client.py 192.168.1.XXX 8080 /Books/some_file.pdf friend_downloads
+python client.py 10.90.58.108 8000 /books/algorithms.pdf friend_downloads
 ```
 
 ![Download from Friend - Terminal](screenshots/31_friend_download_terminal.png)
