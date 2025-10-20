@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lab 1 Networking + Docker Cheat Sheet</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --ok: #34d399;
+      --warn: #f59e0b;
+      --err: #f87171;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 0; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .updated { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+    .card { background: var(--card); border-radius: 12px; padding: 18px 18px; margin: 14px 0; border: 1px solid rgba(255,255,255,0.06); }
+    h2 { font-size: 18px; margin: 0 0 8px; color: var(--accent); }
+    h3 { font-size: 15px; margin: 12px 0 6px; color: #a5b4fc; }
+    ul { margin: 8px 0 8px 18px; }
+    li { margin: 4px 0; }
+    code, pre { background: #0b1020; color: #d1d5db; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; }
+    code { padding: 2px 6px; }
+    pre { padding: 10px 12px; overflow-x: auto; }
+    .k { color: var(--accent); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .err { color: var(--err); }
+    .two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    a { color: #93c5fd; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .small { color: var(--muted); font-size: 12px; }
+    @media print {
+      body { background: #fff; color: #000; }
+      .card { border: 1px solid #ddd; }
+      a { color: #0645ad; }
+      .wrap { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Lab 1 Networking + Docker Cheat Sheet</h1>
+    <div class="updated">Last updated: 2025-10-17 • Open at <code>/cheat-sheet.html</code></div>
+
+    <div class="two">
+      <div class="card">
+        <h2>HTTP Cookies & Privacy</h2>
+        <ul>
+          <li>Cookies let servers remember users across requests (sessions, carts, preferences).</li>
+          <li>Combine with account data → detailed user profiles; privacy implications.</li>
+          <li>Pros: smoother UX. Cons: tracking, data sharing with third parties.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Web Caching & CDNs</h2>
+        <ul>
+          <li><b>Cache (proxy)</b> stores recent objects and serves repeat requests directly.</li>
+          <li><b>Benefits:</b> lower latency on hits; reduced traffic on the access link → cost savings.</li>
+          <li>Typical placement: ISP/institution; browsers configured to use it.</li>
+          <li><b>Hit rate</b> (e.g., 0.2–0.7) cuts link utilization; avoids queueing delays near ρ≈1.</li>
+          <li><b>CDNs</b> = many distributed caches (Akamai, Limelight; Google, Netflix) to serve content close to users.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Conditional GET (Freshness)</h2>
+        <ol>
+          <li>Client caches object and its <code>Last-Modified</code> time.</li>
+          <li>Later, sends <code>GET ...</code> with <code>If-Modified-Since: &lt;timestamp&gt;</code>.</li>
+          <li>Server replies <span class="ok">304 Not Modified</span> (no body) if unchanged, else <span class="ok">200 OK</span> with new body.</li>
+          <li>Saves bandwidth and reduces latency for large objects.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>HTTP/2 Highlights</h2>
+        <ul>
+          <li><b>Framing & multiplexing:</b> break messages into frames; interleave over one TCP conn → avoids HOL blocking.</li>
+          <li><b>Prioritization:</b> client assigns weights; server schedules high-priority frames first.</li>
+          <li><b>Server Push:</b> proactively send dependent assets (CSS/JS) without waiting for requests.</li>
+          <li><b>Header compression</b> and binary framing → lower overhead.</li>
+          <li>Goal: use one TCP conn per page instead of many (fairness + fewer sockets).</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>HTTP/3 (over QUIC)</h2>
+        <ul>
+          <li>Runs over QUIC (UDP): multiplexing, per-stream flow control, faster handshakes.</li>
+          <li>Simpler HTTP layer; many HTTP/2 features shift into QUIC.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>TCP Sockets: Minimal Patterns</h2>
+        <h3>Client</h3>
+        <ol>
+          <li><code>socket(AF_INET, SOCK_STREAM)</code></li>
+          <li><code>connect((serverName, serverPort))</code></li>
+          <li><code>send(bytes)</code> → <code>recv(n)</code></li>
+          <li><code>close()</code></li>
+        </ol>
+        <h3>Server</h3>
+        <ol>
+          <li><code>socket(AF_INET, SOCK_STREAM)</code></li>
+          <li><code>bind(("", port))</code> → <code>listen(backlog)</code></li>
+          <li><code>accept()</code> → per-connection socket</li>
+          <li><code>recv</code>/<code>send</code> → <code>close()</code> per connection (keep listening socket open)</li>
+        </ol>
+        <div class="small">TCP guarantees reliable, in-order delivery; uses 3-way handshake for setup.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Docker Basics for This Lab</h2>
+      <ul>
+        <li><b>Image</b>: built from <code>Dockerfile</code> → contains Python and your app.</li>
+        <li><b>Container</b>: running instance of the image (isolated FS/process).</li>
+        <li><b>Ports</b>: container <code>8080</code> is published as host <code>8080</code>.</li>
+        <li><b>Volume</b>: <code>./collection</code> mounted read-only to <code>/app/collection</code>.</li>
+        <li><b>Compose</b>: <code>docker-compose.yml</code> defines service <code>http-server</code>.</li>
+      </ul>
+      <h3>Key Files</h3>
+      <ul>
+        <li><code>Dockerfile</code> → base <code>python:3.10-slim</code>, copies <code>server.py</code>, exposes <code>8080</code>, runs <code>python -u server.py collection</code>.</li>
+        <li><code>docker-compose.yml</code> → maps <code>8080:8080</code>, mounts <code>./collection</code>, restarts unless stopped.</li>
+      </ul>
+      <h3>Run (PowerShell)</h3>
+      <pre><code># from Lab 1 directory
+# build + run (foreground)
+docker compose up --build
+
+# run in background
+docker compose up -d --build
+
+# tail logs
+docker compose logs -f
+
+# stop & remove container
+ndocker compose down</code></pre>
+      <div class="small">Open: <a href="http://localhost:8080/">http://localhost:8080/</a> • Cheat sheet: <a href="http://localhost:8080/cheat-sheet.html">/cheat-sheet.html</a></div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h2>Quick Facts (60s Cram)</h2>
+        <ul>
+          <li>Cookies = state + tracking risk.</li>
+          <li>Caches cut latency and bandwidth; CDNs are global caches.</li>
+          <li>Conditional GET → <span class="ok">304</span> if unchanged.</li>
+          <li>HTTP/2: frames + multiplexing + priorities + push.</li>
+          <li>HTTP/3 rides QUIC for faster, multiplexed transport.</li>
+          <li>TCP server: listen → accept → per-connection recv/send.</li>
+          <li>Docker: image → container; port 8080; volume mounts live content.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li><b>Port 8080 in use:</b> stop the conflicting process or change the host port in <code>docker-compose.yml</code>.</li>
+          <li><b>Changed server code not applied:</b> rebuild image (<code>--build</code>).</li>
+          <li><b>Cannot see files:</b> ensure they’re under <code>Lab 1/collection/</code> and readable; check volume path.</li>
+          <li><b>Unsupported type:</b> only <code>.html</code>, <code>.png</code>, <code>.pdf</code> served by default.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="small">© Lab 1 Cheat Sheet. For personal study use.</div>
+  </div>
+</body>
+</html>
