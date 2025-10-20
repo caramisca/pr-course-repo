@@ -10,12 +10,12 @@
 
 ## 1. Project Structure
 
-<img src="./screenshots/project_structure.png" alt="Project Structure" width="250">
+![Project Structure](./screenshots/project_structure.png)
 
 The project directory contains:
 
 - **collection/** – the folder served by the server, containing:
-  - **index.html** – Main HTML page with glassmorphism design
+  - **index.html** – Main HTML page
   - **about.html** – About page with lab information
   - **Directory/** – subdirectories with test content:
     - **Books/** – subdirectory with book files and research papers
@@ -37,7 +37,7 @@ The project directory contains:
 
 ### 2.1. Dockerfile
 
-<img src="./screenshots/dockerfile.png" alt="Dockerfile" width="400">
+![Dockerfile](./screenshots/dockerfile.png)
 
 The Dockerfile creates a Python environment with all necessary dependencies:
 
@@ -235,13 +235,11 @@ This script creates multiple threads that make requests simultaneously, measurin
 
 **Results for single-threaded server (sequential processing):**
 
-<img src="./screenshots/time_single.png" alt="Single-threaded Performance" width="500">
-
 With 1 second delay per request, 10 requests take approximately **10 seconds** sequentially.
 
 **Results for multithreaded server (concurrent processing):**
 
-<img src="./screenshots/time_multi.png" alt="Multithreaded Performance" width="500">
+![Multithreaded Performance](./screenshots/time_multi.png)
 
 With 1 second delay per request, 10 requests take approximately **1.2 seconds** concurrently.
 
@@ -280,7 +278,7 @@ python test_counter_race.py
 
 I tested this by making 50 concurrent requests to `README.html`. However, as seen in the screenshot, I got only **34 hits**, meaning **16 updates were lost** due to race conditions.
 
-<img src="./screenshots/race_condition_no_lock.png" alt="Race Condition - Lost Updates" width="800">
+![Race Condition - Lost Updates](./screenshots/race_condition_no_lock.png)
 
 **What happened:**
 Multiple threads read the same counter value simultaneously, then overwrote each other's updates:
@@ -298,7 +296,7 @@ Result: 3 requests made, but counter shows only 6 instead of 8!
 
 Terminal showing successful requests but incorrect counter:
 
-<img src="./screenshots/terminal_race_condition.png" alt="Terminal showing race condition" width="700">
+![Terminal showing race condition](./screenshots/terminal_race_condition.png)
 
 ### 4.2. Thread-Safe Implementation
 
@@ -341,20 +339,18 @@ python test_counter_race.py
 
 After applying the lock, testing with concurrent requests showed that the counter now always increases correctly. The race condition is gone, and the request count reflects the actual number of hits for each file:
 
-<img src="./screenshots/race_condition_fixed.png" alt="Thread-Safe Counter - Correct Results" width="800">
+![Thread-Safe Counter - Correct Results](./screenshots/race_condition_fixed.png)
 
 Now all 50 requests are correctly counted! ✓
 
 ### 4.3. Counter Display in Directory Listings
 
-Counters are displayed in directory listings with a hacker terminal aesthetic:
+Counters are displayed in directory listings:
 
-<img src="./screenshots/directory_listing.png" alt="Directory Listing with Hit Counters" width="900">
+![Directory Listing with Hit Counters](./screenshots/directory_listing.png)
 
 Features:
-- Pure black background (`#000`)
-- Matrix green text (`#0f0`)
-- Terminal prompt: `root@http-server:~/path▊`
+- Terminal-style interface
 - File/directory prefixes: `[FILE]` and `[DIR]`
 - Hit counters displayed with `►` arrows
 - Blinking cursor animation
@@ -365,7 +361,7 @@ Features:
 
 ### 5.1. Implementation
 
-The server keeps track of how many requests each client IP makes within one second using a **sliding window** approach. If the number of requests goes over the limit (default: 5 req/s), the server sends back a **"429 Too Many Requests"** error page.
+The server keeps track of how many requests each client IP makes within one second using a **sliding window** approach. If the number of requests goes over the limit (default: 5 req/s), the server blocks the request.
 
 ```python
 class RateLimiter:
@@ -403,10 +399,6 @@ I used a **lock** to make sure that updates to `request_times` are thread-safe a
 - Thread-safe with `threading.Lock()`
 - Configurable rate limit
 
-**429 Error Page:**
-
-<img src="./screenshots/rate_limit_429.png" alt="Rate Limit Exceeded Error" width="700">
-
 ### 5.2. Testing Rate Limiting
 
 To test rate limiting, I used the `test_rate_limit.py` script with different scenarios:
@@ -417,16 +409,14 @@ To test rate limiting, I used the `test_rate_limit.py` script with different sce
 python test_rate_limit.py single
 ```
 
-In the first test, I simulated **spamming** by sending **10 requests per second** (above the 5 req/s limit). The server applied the rate limit correctly, returning 5 successful responses (200 OK) and 5 blocked ones (429 Too Many Requests). Because half of the requests were rejected, the throughput was lower — around **2.5 successful requests per second**.
-
-<img src="./screenshots/spam_client.png" alt="Spam Client Results" width="500">
+In the first test, I simulated **spamming** by sending **10 requests per second** (above the 5 req/s limit). The server applied the rate limit correctly, returning 5 successful responses (200 OK) and 5 blocked ones. Because half of the requests were rejected, the throughput was lower — around **2.5 successful requests per second**.
 
 Results:
 ```
 SPAM CLIENT:
   Total requests:       50
   Successful (200):     25 (50.0%)
-  Blocked (429):        25 (50.0%)
+  Blocked:              25 (50.0%)
   Throughput:           2.50 successful req/s
 ```
 
@@ -434,14 +424,14 @@ SPAM CLIENT:
 
 In the second test, I sent the same number of requests but at a **slower pace** (4 req/s), staying under the rate limit. All 10 requests were successful, and the throughput increased to **4.00 successful requests per second**. This shows that the rate limiting mechanism works as intended, limiting excessive traffic while maintaining high performance for normal users.
 
-<img src="./screenshots/legit_client.png" alt="Legitimate Client Results" width="500">
+![Legitimate Client Results](./screenshots/legit_client.png)
 
 Results:
 ```
 LEGIT CLIENT:
   Total requests:       40
   Successful (200):     40 (100.0%)
-  Blocked (429):        0 (0.0%)
+  Blocked:              0 (0.0%)
   Throughput:           4.00 successful req/s
 ```
 
@@ -455,69 +445,11 @@ This test simulates two clients accessing the server concurrently:
 - **Spam client**: 20 req/s (should be blocked)
 - **Legitimate client**: 4 req/s (should succeed)
 
-<img src="./screenshots/concurrent_rate_limit.png" alt="Concurrent Clients Test" width="700">
-
 **Note:** Both clients run from localhost, so they share the same rate limit. In a real scenario with different IPs, each would have their own independent rate limit.
 
-## 6. Additional Features
+## 6. Testing Guide
 
-### 6.1. Glassmorphism UI Design
-
-The main pages (`index.html`, `about.html`) feature a modern **iOS-style glassmorphism** design with:
-
-<img src="./screenshots/glassmorphism.png" alt="Glassmorphism Design" width="900">
-
-**CSS Features:**
-- Backdrop blur effects (`backdrop-filter: blur(30px)`)
-- Translucent containers (`rgba(255, 255, 255, 0.25)`)
-- Glass-style cards with hover animations
-- Gradient text effects
-- Smooth transitions
-- Custom background image
-
-**Code snippet:**
-```css
-.container {
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(30px) saturate(180%);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-```
-
-### 6.2. Hacker Terminal Directory Listings
-
-Directory listings use a **terminal-style aesthetic** reminiscent of classic hacker movies:
-
-<img src="./screenshots/hacker_terminal.png" alt="Hacker Terminal Design" width="900">
-
-**Features:**
-- Pure black background (`#000`)
-- Matrix green text (`#0f0`, `#00ff00`)
-- Terminal prompt: `root@http-server:~/path▊`
-- Command display: `$ ls -lah`
-- File prefixes: `[DIR]` and `[FILE]`
-- Hit counters: `► 42` format
-- Animations: cursor blink, scanline effect
-- Hover glow effects with `text-shadow`
-
-### 6.3. File Generation Utilities
-
-The `setup_files.py` script generates sample files for testing:
-
-```bash
-python setup_files.py
-```
-
-Generates:
-- **HTML files** with proper structure and content
-- **PNG images** (solid colors, generated with Pillow)
-- **PDF documents** (created with ReportLab library)
-
-## 7. Testing Guide
-
-### 7.1. Setup
+### 6.1. Setup
 
 ```bash
 # Install dependencies
@@ -527,7 +459,7 @@ pip install -r requirements.txt
 python setup_files.py
 ```
 
-### 7.2. Complete Test Sequence
+### 6.2. Complete Test Sequence
 
 ```bash
 # 1. Start server with locks enabled
@@ -556,7 +488,7 @@ python server.py collection
 python test_rate_limit.py concurrent
 ```
 
-### 7.3. Using PowerShell Helper Scripts
+### 6.3. Using PowerShell Helper Scripts
 
 For easier testing on Windows:
 
@@ -568,7 +500,7 @@ For easier testing on Windows:
 .\docker_helper.ps1
 ```
 
-## 8. Lab Requirements Checklist
+## 7. Lab Requirements Checklist
 
 ### Task 1: Multithreading (4 points) ✅
 
@@ -616,9 +548,9 @@ For easier testing on Windows:
 - Thread-safe using `threading.Lock()`
 - Spam client (10 req/s): 50% blocked, 2.5 req/s throughput
 - Legitimate client (4 req/s): 0% blocked, 4.0 req/s throughput
-- Returns HTTP 429 when limit exceeded
+- Blocks excessive requests when limit exceeded
 
-## 9. Performance Metrics
+## 8. Performance Metrics
 
 | Metric | Sequential | Multithreaded | Improvement |
 |--------|-----------|---------------|-------------|
@@ -627,9 +559,9 @@ For easier testing on Windows:
 | Race Condition Protection | N/A | With locks | **100% accurate** |
 | Rate Limiting | None | 5 req/s per IP | **Prevents abuse** |
 
-## 10. Project Insights
+## 9. Project Insights
 
-### 10.1. What I Learned
+### 9.1. What I Learned
 
 1. **Multithreading Benefits:**
    - Thread pools prevent resource exhaustion under high load
@@ -655,7 +587,7 @@ For easier testing on Windows:
    - Visual demonstrations (screenshots) help understand complex problems
    - Comparison tests prove the effectiveness of solutions
 
-### 10.2. Comparison with Lab 1
+### 9.2. Comparison with Lab 1
 
 | Feature | Lab 1 | Lab 2 |
 |---------|-------|-------|
@@ -665,10 +597,10 @@ For easier testing on Windows:
 | Race Conditions | None (single-threaded) | Demonstrated and fixed |
 | Rate Limiting | None | Per-IP, configurable |
 | Request Counter | None | Thread-safe tracking |
-| Error Handling | Basic (404, 403) | Enhanced (+ 429) |
+| Error Handling | Basic (404, 403) | Enhanced |
 | Scalability | Poor | Good (up to 10 concurrent) |
 
-### 10.3. Real-World Applications
+### 9.3. Real-World Applications
 
 The concepts learned in this lab are fundamental to production servers:
 
@@ -677,7 +609,7 @@ The concepts learned in this lab are fundamental to production servers:
 - **Rate Limiting**: Used by GitHub API, Twitter API, etc. to prevent abuse
 - **Thread Safety**: Critical in any multi-threaded application (databases, message queues)
 
-## 11. Conclusions
+## 10. Conclusions
 
 This laboratory work demonstrated the importance of **multithreading** in server applications. By implementing a thread pool with `ThreadPoolExecutor`, the server can handle multiple requests simultaneously, resulting in significant performance improvements (**8-10x speedup** in tests).
 
@@ -697,7 +629,7 @@ The skills gained are directly applicable to real-world server development, wher
 
 ---
 
-## 12. References
+## 11. References
 
 - Python `threading` documentation: https://docs.python.org/3/library/threading.html
 - Python `concurrent.futures` documentation: https://docs.python.org/3/library/concurrent.futures.html
