@@ -56,7 +56,6 @@ collection/**/*.html
 !collection/Books/.gitkeep
 
 # Screenshots (if you add them)
-screenshots/
 
 # Logs
 *.log
