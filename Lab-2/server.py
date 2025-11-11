@@ -178,7 +178,7 @@ class HTTPServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
-        self.server_socket.listen(5)
+        self.server_socket.listen(100)  # Increased backlog to handle concurrent requests
         
         print(f"[INFO] Server listening on {self.host}:{self.port}")
         print(f"[INFO] Press Ctrl+C to stop the server\n")
@@ -302,7 +302,7 @@ class HTTPServer:
         
         # Increment request counter for this path (normalized without trailing slash)
         # Use small delay for race condition demo if locks disabled
-        delay = 0.001 if not self.counter.use_lock else 0
+        delay = 1 if not self.counter.use_lock else 0
         self.counter.increment(path, delay=delay)
         
         # If it's a directory, serve directory listing

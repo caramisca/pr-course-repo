@@ -7,6 +7,7 @@ Supports directory listing for nested directories.
 import socket
 import sys
 import os
+import time
 from urllib.parse import unquote
 from datetime import datetime
 
@@ -21,7 +22,7 @@ class HTTPServer:
         '.pdf': 'application/pdf',
     }
     
-    def __init__(self, host='0.0.0.0', port=8080, directory='.'):
+    def __init__(self, host='0.0.0.0', port=8081, directory='.', request_delay=0):
         """
         Initialize the HTTP server
         
@@ -29,17 +30,21 @@ class HTTPServer:
             host: Host address to bind to
             port: Port number to listen on
             directory: Root directory to serve files from
+            request_delay: Artificial delay per request (for testing)
         """
         self.host = host
         self.port = port
         self.directory = os.path.abspath(directory)
         self.server_socket = None
+        self.request_delay = request_delay
         
         if not os.path.exists(self.directory):
             raise ValueError(f"Directory '{self.directory}' does not exist")
         
         print(f"[INFO] Server initialized")
         print(f"[INFO] Serving directory: {self.directory}")
+        if request_delay > 0:
+            print(f"[INFO] Artificial delay: {request_delay}s per request (for testing)")
     
     def start(self):
         """Start the HTTP server and listen for connections"""
@@ -71,6 +76,10 @@ class HTTPServer:
             client_address: Tuple containing client IP and port
         """
         try:
+            # Artificial delay for testing (simulates work)
+            if self.request_delay > 0:
+                time.sleep(self.request_delay)
+            
             # Receive the request
             request_data = client_socket.recv(4096).decode('utf-8')
             
@@ -381,14 +390,22 @@ class HTTPServer:
 def main():
     """Main entry point"""
     if len(sys.argv) < 2:
-        print("Usage: python server.py <directory>")
+        print("Usage: python server.py <directory> [--delay <seconds>]")
         print("Example: python server.py ./collection")
+        print("Example: python server.py ./collection --delay 1")
         sys.exit(1)
     
     directory = sys.argv[1]
     
+    # Parse delay argument
+    request_delay = 0
+    if '--delay' in sys.argv:
+        idx = sys.argv.index('--delay')
+        if idx + 1 < len(sys.argv):
+            request_delay = float(sys.argv[idx + 1])
+    
     try:
-        server = HTTPServer(host='0.0.0.0', port=8080, directory=directory)
+        server = HTTPServer(host='0.0.0.0', port=8081, directory=directory, request_delay=request_delay)
         server.start()
     except Exception as e:
         print(f"[ERROR] Failed to start server: {e}")
