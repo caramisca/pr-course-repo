@@ -7,15 +7,60 @@ import requests
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
+import re
+
+
+def check_server(url):
+    """Check if server is running"""
+    try:
+        response = requests.get(url, timeout=2)
+        return True
+    except:
+        return False
+
+
+def get_counter_value(base_url, file_path):
+    """
+    Get the current counter value for a file by scraping the directory listing
+    
+    Args:
+        base_url: Base URL of the server
+        file_path: Path like "Directory/images/README.html"
+        
+    Returns:
+        Counter value as integer, or None if not found
+    """
+    try:
+        # Get the directory listing page
+        dir_path = '/'.join(file_path.split('/')[:-1])
+        filename = file_path.split('/')[-1]
+        
+        response = requests.get(f"{base_url}/{dir_path}/", timeout=5)
+        if response.status_code != 200:
+            return None
+        
+        html = response.text
+        
+        # Find the row for this file - pattern: <td class="file"><a href="...">README.html</a></td><td class="hits">42</td>
+        pattern = rf'<td class="file"><a[^>]*>{re.escape(filename)}</a></td><td class="hits">(\d+)</td>'
+        match = re.search(pattern, html)
+        
+        if match:
+            return int(match.group(1))
+        return None
+        
+    except Exception as e:
+        print(f"Error getting counter: {e}")
+        return None
 
 
 def make_request(url, request_id):
     """Make a single HTTP request"""
     try:
         response = requests.get(url, timeout=10)
-        return (request_id, response.status_code)
+        return (request_id, response.status_code, response.headers.get('Content-Type', 'unknown'))
     except Exception as e:
-        return (request_id, f"ERROR: {e}")
+        return (request_id, f"ERROR: {e}", None)
 
 
 def test_counter_race(url, num_requests=50, max_workers=20):
@@ -49,7 +94,7 @@ def test_counter_race(url, num_requests=50, max_workers=20):
         
         # Collect results
         for future in as_completed(futures):
-            request_id, status = future.result()
+            request_id, status, content_type = future.result()
             
             if status == 200:
                 successful_requests += 1
@@ -89,13 +134,24 @@ def main():
     print("   python server.py collection --no-rate-limit")
     print("\n" + "="*70)
     
-    # Wait for user
-    print("\nMake sure your server is running, then press Enter...")
-    input()
-    
     # Test URL - use a specific file so counter is visible
-    url = "http://localhost:8080/Directory/images/README.html"
+    base_url = "http://localhost:8080"
+    url = f"{base_url}/Directory/images/README.html"
     num_requests = 50
+    
+    # Check if server is running
+    print(f"\nChecking if server is running at {base_url}...")
+    if not check_server(base_url):
+        print("\n❌ ERROR: Server is not responding!")
+        print("\nPlease start the server first:")
+        print("\n  For testing WITH race condition:")
+        print("    python server.py collection --no-lock --no-rate-limit")
+        print("\n  For testing WITHOUT race condition:")
+        print("    python server.py collection --no-rate-limit")
+        print("\nThen run this test again.")
+        return
+    
+    print("✅ Server is running!\n")
     
     print("\n" + "="*70)
     print(f"Starting test with {num_requests} concurrent requests...")
@@ -104,8 +160,40 @@ def main():
     
     successful = test_counter_race(url, num_requests=num_requests, max_workers=25)
     
+    # Give server a moment to finish processing
+    time.sleep(0.5)
+    
+    # Check the actual counter value from the directory listing
     print("\n" + "="*70)
-    print("NEXT STEPS:")
+    print("CHECKING COUNTER VALUE FROM DIRECTORY LISTING")
+    print("="*70)
+    
+    counter_value = get_counter_value(base_url, "Directory/images/README.html")
+    
+    if counter_value is not None:
+        print(f"\n✅ Successfully retrieved counter from directory listing!")
+        print(f"\n📊 RESULTS:")
+        print(f"   • Requests sent:    {num_requests}")
+        print(f"   • Requests success: {successful}")
+        print(f"   • Counter shows:    {counter_value} hits")
+        
+        if counter_value == successful:
+            print(f"\n✅ PASS: Counter is accurate ({counter_value} == {successful})")
+            print(f"   Server is using LOCKS (thread-safe)")
+        else:
+            lost_count = successful - counter_value
+            loss_percent = (lost_count / successful * 100) if successful > 0 else 0
+            print(f"\n❌ RACE CONDITION DETECTED!")
+            print(f"   Counter shows:  {counter_value}")
+            print(f"   Should be:      {successful}")
+            print(f"   Lost counts:    {lost_count} ({loss_percent:.1f}% loss)")
+            print(f"\n   Server is NOT using locks (race condition present)")
+    else:
+        print(f"\n⚠️  Could not retrieve counter value automatically.")
+        print(f"   Please check manually in browser:")
+    
+    print("\n" + "="*70)
+    print("MANUAL VERIFICATION:")
     print("="*70)
     print(f"\n1. Open your browser to: http://localhost:8080/Directory/images/")
     print(f"2. Look at the hit counter for 'README.html'")

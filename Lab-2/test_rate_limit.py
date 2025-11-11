@@ -10,6 +10,23 @@ import threading
 from collections import defaultdict
 
 
+def check_server(url):
+    """
+    Check if the server is running
+    
+    Args:
+        url: Base URL of the server to check
+        
+    Returns:
+        True if server is responding, False otherwise
+    """
+    try:
+        response = requests.get(url, timeout=2)
+        return True
+    except:
+        return False
+
+
 class RateLimitTester:
     """Test rate limiting functionality"""
     
@@ -36,10 +53,20 @@ class RateLimitTester:
                     self.results[client_name]['blocked'] += 1
                 else:
                     self.results[client_name]['errors'] += 1
+                    print(f"  [UNEXPECTED] {client_name}: HTTP {response.status_code}")
                     
+        except requests.exceptions.Timeout:
+            with self.lock:
+                self.results[client_name]['errors'] += 1
+                print(f"  [TIMEOUT] {client_name}: Request timed out after 5s")
+        except requests.exceptions.ConnectionError:
+            with self.lock:
+                self.results[client_name]['errors'] += 1
+                print(f"  [ERROR] {client_name}: Connection refused - server not running?")
         except Exception as e:
             with self.lock:
                 self.results[client_name]['errors'] += 1
+                print(f"  [ERROR] {client_name}: {type(e).__name__}: {e}")
     
     def spam_client(self, duration=10, requests_per_second=20):
         """
@@ -47,9 +74,10 @@ class RateLimitTester:
         
         Args:
             duration: How long to spam (seconds)
-            requests_per_second: Request rate
+            requests_per_second: Request rate (default 20 req/s, which is 4x the 5 req/s limit)
         """
         print(f"\n[SPAM CLIENT] Starting spam at {requests_per_second} req/s for {duration}s...")
+        print(f"[SPAM CLIENT] Expected total: ~{duration * requests_per_second} requests")
         
         start_time = time.time()
         request_count = 0
@@ -59,9 +87,10 @@ class RateLimitTester:
             request_count += 1
             
             # Sleep to maintain desired rate
-            time.sleep(1.0 / requests_per_second)
+            sleep_time = 1.0 / requests_per_second
+            time.sleep(sleep_time)
         
-        print(f"[SPAM CLIENT] Completed {request_count} requests")
+        print(f"[SPAM CLIENT] Completed {request_count} requests in {time.time() - start_time:.2f}s")
     
     def legitimate_client(self, duration=10, requests_per_second=4):
         """
@@ -69,9 +98,10 @@ class RateLimitTester:
         
         Args:
             duration: How long to run (seconds)
-            requests_per_second: Request rate (below limit)
+            requests_per_second: Request rate (below limit, default 4 req/s < 5 req/s limit)
         """
         print(f"\n[LEGIT CLIENT] Starting legitimate traffic at {requests_per_second} req/s for {duration}s...")
+        print(f"[LEGIT CLIENT] Expected total: ~{duration * requests_per_second} requests")
         
         start_time = time.time()
         request_count = 0
@@ -81,9 +111,10 @@ class RateLimitTester:
             request_count += 1
             
             # Sleep to maintain desired rate
-            time.sleep(1.0 / requests_per_second)
+            sleep_time = 1.0 / requests_per_second
+            time.sleep(sleep_time)
         
-        print(f"[LEGIT CLIENT] Completed {request_count} requests")
+        print(f"[LEGIT CLIENT] Completed {request_count} requests in {time.time() - start_time:.2f}s")
     
     def print_results(self):
         """Print formatted test results"""
@@ -119,12 +150,21 @@ def test_single_client_rate_limit():
     print("="*70)
     print("\nThis test shows how rate limiting works with a single client.")
     print("Server should be configured with rate limit (e.g., 5 req/s)")
-    print("\nStart server with: python server.py collection")
-    print("Press Enter when ready...")
-    input()
     
     base_url = "http://localhost:8080"
     test_path = "/Directory/images/README.html"
+    
+    # Check if server is running
+    print(f"\nChecking if server is running at {base_url}...")
+    if not check_server(base_url):
+        print("\n❌ ERROR: Server is not responding!")
+        print("\nPlease start the server first:")
+        print("  cd Lab-2")
+        print("  python server.py collection")
+        print("\nThen run this test again.")
+        return
+    
+    print("✅ Server is running!\n")
     
     # Test 1: Send requests at exactly the rate limit
     print("\n--- Test 1: Sending at rate limit (5 req/s) ---")

@@ -105,11 +105,15 @@ while ($true) {
             }
         }
         "11" {
-            Write-Host "`nRunning performance test..." -ForegroundColor Green
-            Write-Host "Make sure delayed server is running (option 4 or 6)" -ForegroundColor Yellow
-            Write-Host "Waiting 3 seconds..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 3
-            python test_concurrent.py compare
+            Write-Host "`nRunning load test against a single server..." -ForegroundColor Green
+            Write-Host "Tip: Start the delayed server (option 4) or any server you want to test first." -ForegroundColor Yellow
+            $url = Read-Host "Enter target URL (default: http://localhost:8081/Directory/images/README.html)"
+            if (-not $url) { $url = "http://localhost:8081/Directory/images/README.html" }
+            $num = Read-Host "Number of concurrent requests (default: 20)"
+            if (-not $num) { $num = 20 }
+            $workers = Read-Host "Max worker threads (default: same as requests)"
+            if (-not $workers) { python test_concurrent.py load $url $num }
+            else { python test_concurrent.py load $url $num $workers }
         }
         "12" {
             Write-Host "`nRunning race condition test..." -ForegroundColor Green
