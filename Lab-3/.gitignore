@@ -1,0 +1,11 @@
+.DS_Store
+/node_modules/
+/package-lock.json
+/dist/
+/coverage/
+
+verify_setup.bat
+verify.mjs
+test_rule1d_fairness.mjs
+verify_setup.ps1
+debug_rule3.mjs
