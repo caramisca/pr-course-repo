@@ -1,0 +1,507 @@
+\documentclass[aspectratio=169]{beamer}
+
+% Theme and color scheme
+\usetheme{Copenhagen}
+\usecolortheme{default}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+% Code highlighting configuration
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+% Title information
+\title{Concurrent Tasks and Futures}
+\subtitle{Modern Asynchronous Programming Paradigms}
+\author{Network Programming Course}
+\institute{Technical University of Moldova}
+\date{\today}
+
+\begin{document}
+
+% Title slide
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Table of contents
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+
+% Section 1: Introduction
+\section{Introduction}
+
+\begin{frame}{Introduction}
+    \begin{block}{Overview}
+        \textbf{Concurrent tasks} and \textbf{futures} are central to modern programming, enabling efficient execution and management of asynchronous processes.
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Topics Covered:}
+    \begin{itemize}
+        \item Definitions and core concepts
+        \item Use-cases and practical implementation
+        \item Thread-pooling and synchronization
+        \item Error handling strategies
+        \item Common patterns in concurrent programming
+    \end{itemize}
+\end{frame}
+
+% Section 2: Core Concepts
+\section{Core Concepts}
+
+\begin{frame}{Core Concepts: Concurrent Tasks}
+    \begin{block}{What are Concurrent Tasks?}
+        Executing multiple functions or processes simultaneously, either:
+        \begin{itemize}
+            \item \textbf{Truly parallel} (multi-core execution)
+            \item \textbf{Via context switching} (time-slicing on single core)
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Use Cases:}
+    \begin{itemize}
+        \item I/O-bound and CPU-bound workloads
+        \item UI responsiveness
+        \item Background processing
+        \item Efficient resource utilization
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Core Concepts: Futures}
+    \begin{block}{What are Futures?}
+        Abstractions representing the result of asynchronous computations
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Key Characteristics:}
+    \begin{itemize}
+        \item Promises a value that will be available in the future
+        \item Result becomes available after the concurrent task completes
+        \item Provides a handle to check status and retrieve results
+        \item Enables non-blocking code execution
+    \end{itemize}
+\end{frame}
+
+% Section 3: Key Principles
+\section{Key Principles}
+
+\begin{frame}{Key Principles}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Threading}
+        \begin{itemize}
+            \item Running multiple threads concurrently
+            \item Shared memory space
+            \item Context switching overhead
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \textbf{Thread Pooling}
+        \begin{itemize}
+            \item Managing threads for efficiency
+            \item Reusing worker threads
+            \item Reduced creation overhead
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Synchronization}
+        \begin{itemize}
+            \item Ensuring safe access to shared resources
+            \item Locks, semaphores, monitors
+            \item Preventing race conditions
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \textbf{Callbacks, Await/Async}
+        \begin{itemize}
+            \item Handling completion and results
+            \item Non-blocking execution flow
+            \item Composable operations
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Error Handling in Futures}
+    \begin{block}{Why Error Handling Matters}
+        Asynchronous operations can fail in various ways, requiring robust error handling mechanisms
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Common Approaches:}
+    \begin{itemize}
+        \item Capturing exceptions in future results
+        \item Timeout handling for long-running operations
+        \item Retry mechanisms for transient failures
+        \item Fallback strategies for critical operations
+        \item Proper cleanup and resource management
+    \end{itemize}
+\end{frame}
+
+% Section 4: Implementation Examples
+\section{Implementation Examples}
+
+\begin{frame}[fragile]{Python Implementation}
+    \textbf{Using concurrent.futures module:}
+    \begin{lstlisting}[language=Python]
+import concurrent.futures
+import time
+
+def my_task(n):
+    time.sleep(1)
+    return n * n
+
+with concurrent.futures.ThreadPoolExecutor() as executor:
+    future = executor.submit(my_task, 5)
+    print(future.result())  # Output: 25
+    \end{lstlisting}
+    
+    \vspace{0.3cm}
+    
+    \textbf{Key Features:}
+    \begin{itemize}
+        \item ThreadPoolExecutor for managing thread pools
+        \item submit() returns a Future object
+        \item result() blocks until computation completes
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Java Implementation}
+    \textbf{Using Executors and Future:}
+    \begin{lstlisting}[language=Java]
+import java.util.concurrent.*;
+
+public class FutureExample {
+    public static void main(String[] args) throws Exception {
+        ExecutorService executor = 
+            Executors.newSingleThreadExecutor();
+        
+        Future<Integer> future = 
+            executor.submit(() -> 5 * 5);
+        
+        System.out.println(future.get());  // Output: 25
+        
+        executor.shutdown();
+    }
+}
+    \end{lstlisting}
+    
+    \textbf{Key Features:}
+    \begin{itemize}
+        \item ExecutorService for thread management
+        \item Future.get() retrieves result (blocking)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{JavaScript Implementation}
+    \textbf{Using Promises:}
+    \begin{lstlisting}[language=JavaScript]
+function asyncTask(n) {
+    return new Promise(resolve => {
+        setTimeout(() => resolve(n * n), 1000);
+    });
+}
+
+asyncTask(5).then(result => {
+    console.log(result);  // Output: 25
+});
+
+// Using async/await
+async function runTask() {
+    const result = await asyncTask(5);
+    console.log(result);  // Output: 25
+}
+    \end{lstlisting}
+    
+    \textbf{Key Features:}
+    \begin{itemize}
+        \item Promises for asynchronous operations
+        \item then() for chaining operations
+        \item async/await for synchronous-like syntax
+    \end{itemize}
+\end{frame}
+
+% Section 5: Patterns, Pitfalls, Best Practices
+\section{Patterns, Pitfalls, and Best Practices}
+
+\begin{frame}{Patterns and Best Practices}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Best Practices:}
+        \begin{itemize}
+            \item Use futures/promises to avoid callback hell
+            \item Properly shutdown thread pools
+            \item Handle exceptions and timeouts
+            \item Limit thread pool size appropriately
+            \item Use appropriate concurrency level
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Common Pitfalls:}
+        \begin{itemize}
+            \item Race conditions on shared state
+            \item Deadlocks from improper locking
+            \item Resource leaks (threads, connections)
+            \item Unbounded thread creation
+            \item Ignoring error handling
+        \end{itemize}
+    \end{columns}
+    
+    \vspace{0.5cm}
+    
+    \begin{alertblock}{Critical Rule}
+        Always synchronize shared state to avoid race conditions!
+    \end{alertblock}
+\end{frame}
+
+% Section 6: Advanced Topics
+\section{Advanced Topics}
+
+\begin{frame}{Advanced Topics: Part 1}
+    \textbf{1. Chaining Futures}
+    \begin{itemize}
+        \item When one result depends on another
+        \item Sequential dependency between async operations
+        \item Example: fetch data $\rightarrow$ process $\rightarrow$ save
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \textbf{2. Composing Tasks}
+    \begin{itemize}
+        \item Parallel aggregation of results
+        \item Map-reduce patterns
+        \item Combining multiple independent futures
+        \item Example: fetch from multiple sources simultaneously
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Advanced Topics: Part 2}
+    \textbf{3. Progress Reporting}
+    \begin{itemize}
+        \item Tracking completion of long-running tasks
+        \item Providing user feedback
+        \item Incremental result delivery
+        \item Progress callbacks and listeners
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \textbf{4. Cancellation of Tasks}
+    \begin{itemize}
+        \item Stopping tasks that are no longer needed
+        \item Resource cleanup on cancellation
+        \item Cooperative vs. forceful cancellation
+        \item Handling partially completed work
+    \end{itemize}
+\end{frame}
+
+% Section 7: Use Cases
+\section{Use Cases}
+
+\begin{frame}{Real-World Use Cases}
+    \begin{enumerate}
+        \item \textbf{Web Servers}
+        \begin{itemize}
+            \item Handling multiple concurrent HTTP requests
+            \item Non-blocking I/O operations
+            \item Improved throughput and response times
+        \end{itemize}
+        
+        \item \textbf{Data Pipelines}
+        \begin{itemize}
+            \item Parallel data processing
+            \item ETL (Extract, Transform, Load) operations
+            \item Batch processing optimization
+        \end{itemize}
+        
+        \item \textbf{GUI Applications}
+        \begin{itemize}
+            \item Background loading without UI freezing
+            \item Responsive user interfaces
+            \item Smooth user experience
+        \end{itemize}
+        
+        \item \textbf{Real-time Analytics}
+        \begin{itemize}
+            \item Concurrent data stream processing
+            \item Low-latency computations
+            \item Scalable event handling
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+% Section 8: Discussion Questions
+\section{Discussion Questions}
+
+\begin{frame}{Discussion Question 1}
+    \begin{block}{Question}
+        What is the difference between concurrency and parallelism?
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{block}{Answer}
+        \textbf{Concurrency} is about managing multiple tasks efficiently (may or may not be at the same instant). It's about dealing with lots of things at once.
+        
+        \vspace{0.3cm}
+        
+        \textbf{Parallelism} is about executing tasks simultaneously, often on multiple cores. It's about doing lots of things at once.
+        
+        \vspace{0.3cm}
+        
+        \emph{Example:} A single-core CPU can be concurrent but not parallel, while a multi-core CPU can achieve true parallelism.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Discussion Question 2}
+    \begin{block}{Question}
+        What happens if you access shared data from multiple concurrent tasks?
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{block}{Answer}
+        Without proper synchronization, this can lead to:
+        \begin{itemize}
+            \item \textbf{Race conditions:} Unpredictable results due to timing
+            \item \textbf{Data corruption:} Inconsistent state
+            \item \textbf{Lost updates:} Concurrent writes overwriting each other
+            \item \textbf{Reading stale data:} Visibility issues
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \textbf{Solution:} Use synchronization mechanisms (locks, mutexes, atomic operations) to ensure thread-safe access.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Discussion Question 3}
+    \begin{block}{Question}
+        How do futures help in handling asynchronous results?
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{block}{Answer}
+        Futures provide several benefits:
+        \begin{itemize}
+            \item \textbf{Write clean code:} Wait for completion without callbacks
+            \item \textbf{Check status:} Query if operation is complete
+            \item \textbf{Error handling:} Capture and propagate exceptions
+            \item \textbf{Retrieve results:} Get the value once available
+            \item \textbf{Composability:} Chain multiple async operations
+            \item \textbf{Timeout support:} Set maximum wait time
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        They provide a clean abstraction over asynchronous operations!
+    \end{block}
+\end{frame}
+
+\begin{frame}{Discussion Question 4}
+    \begin{block}{Question}
+        How are promises in JavaScript similar to futures in Java/Python?
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{block}{Answer}
+        Both are abstractions for pending results with similar features:
+        \begin{itemize}
+            \item \textbf{Represent eventual values:} Placeholder for future result
+            \item \textbf{Support chaining:} then() in JS, thenApply() in Java
+            \item \textbf{Error handling:} catch() in JS, exception in result()
+            \item \textbf{Completion callbacks:} Execute code when done
+            \item \textbf{State management:} Pending, fulfilled, rejected
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \emph{Difference:} JavaScript Promises are native language features, while Java/Python use library implementations.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Discussion Question 5}
+    \begin{block}{Question}
+        Name some thread pool best practices.
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{block}{Answer}
+        \begin{enumerate}
+            \item \textbf{Limit pool size:} Prevent resource exhaustion
+            \item \textbf{Handle task exceptions:} Don't let exceptions kill threads
+            \item \textbf{Shutdown gracefully:} Always close pools when done
+            \item \textbf{Choose appropriate pool type:} Fixed, cached, scheduled
+            \item \textbf{Monitor queue size:} Prevent unbounded queuing
+            \item \textbf{Use meaningful thread names:} Aids debugging
+            \item \textbf{Set appropriate timeouts:} Prevent hanging operations
+            \item \textbf{Consider rejection policies:} Handle overload scenarios
+        \end{enumerate}
+    \end{block}
+\end{frame}
+
+% Conclusion
+\section{Conclusion}
+
+\begin{frame}{Summary}
+    \begin{block}{Key Takeaways}
+        \begin{itemize}
+            \item Concurrent tasks and futures enable efficient asynchronous programming
+            \item Understanding threading, pooling, and synchronization is crucial
+            \item Multiple languages provide similar abstractions (Futures, Promises)
+            \item Proper error handling and resource management are essential
+            \item Advanced patterns enable powerful concurrent designs
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{center}
+        \Large{\textbf{Thank You!}}
+        
+        \vspace{0.3cm}
+        
+        \normalsize{Questions?}
+    \end{center}
+\end{frame}
+
+\end{document}
