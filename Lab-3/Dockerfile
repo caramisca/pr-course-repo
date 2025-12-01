@@ -27,4 +27,4 @@ COPY boards ./boards
 EXPOSE 8080
 
 # Files are compiled to dist/ directly, not dist/src/
-CMD ["node", "dist/server.js", "8080", "boards/perfect.txt"]
+CMD ["node", "dist/server.js", "8080", "boards/zoom.txt"]

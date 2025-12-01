@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+.dockerignore
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Screenshots (keep folder but ignore some files if needed)
+# screenshots/*.png
+# screenshots/*.jpg
+
+
+architecture.md
+commands_reference.md
+get_started.md
+implementation_summary.md
+quickstart.md
+requirements.txt
+testing_guide.md

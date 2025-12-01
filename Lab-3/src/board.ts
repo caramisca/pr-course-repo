@@ -21,6 +21,7 @@ type PlayerState = {
     firstCard: { row: number; column: number } | null;
     secondCard: { row: number; column: number } | null;
     matched: boolean;
+    lastRevealed: Set<string>; // Track all cards revealed in current play (as "row,column" keys)
 };
 
 /**
@@ -35,6 +36,7 @@ export class Board {
     private readonly players: Map<string, PlayerState>;
     private readonly waitingForCard: Map<string, Array<() => void>>;
     private readonly watchers: Array<() => void>;
+    private readonly playerLocks: Map<string, Promise<void>>; // serialize per-player flips
 
     // Abstraction function:
     //   Represents a Memory Scramble game board with a grid of cards.
@@ -54,7 +56,8 @@ export class Board {
     // Safety from rep exposure:
     //   - All fields are private and readonly
     //   - grid, players, waitingForCard, and watchers are never returned directly
-    //   - Methods return strings (board state) or primitives only
+    //   - Methods return strings (board state)
+    //  or primitives only
 
     /**
      * Create a new board with given dimensions and cards.
@@ -70,6 +73,7 @@ export class Board {
         this.players = new Map();
         this.waitingForCard = new Map();
         this.watchers = [];
+        this.playerLocks = new Map();
 
         assert(cards.length === rows * columns, 'Wrong number of cards');
 
@@ -90,12 +94,73 @@ export class Board {
 
     /**
      * Check the representation invariant.
+     * Validates all RI conditions:
+     * - Dimensions are positive
+     * - Grid structure matches dimensions
+     * - Controlled spots reference valid players
+     * - Player card positions reference valid coordinates
+     * - No card is controlled by multiple players
      */
     private checkRep(): void {
-        assert(this.rows > 0 && this.columns > 0);
-        assert(this.grid.length === this.rows);
+        // RI: rows > 0 and columns > 0
+        assert(this.rows > 0, 'rows must be positive');
+        assert(this.columns > 0, 'columns must be positive');
+        
+        // RI: grid.length === rows
+        assert(this.grid.length === this.rows, 'grid length must equal rows');
+        
+        // RI: for all i, grid[i].length === columns
         for (const row of this.grid) {
-            assert(row.length === this.columns);
+            assert(row.length === this.columns, 'all rows must have columns length');
+        }
+        
+        // RI: for each spot: if faceUp is true and controller is not null, that player exists in players
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.columns; c++) {
+                const row = this.grid[r];
+                assert(row !== undefined, 'row must exist');
+                const spot = row[c];
+                assert(spot !== undefined, 'spot must exist');
+                
+                if (spot.controller !== null) {
+                    assert(this.players.has(spot.controller), 
+                           `controller ${spot.controller} at (${r},${c}) must exist in players map`);
+                }
+            }
+        }
+        
+        // RI: for each player: if firstCard/secondCard is not null, those coordinates are valid
+        for (const [playerId, state] of this.players) {
+            if (state.firstCard !== null) {
+                assert(state.firstCard.row >= 0 && state.firstCard.row < this.rows,
+                       `player ${playerId} firstCard row must be valid`);
+                assert(state.firstCard.column >= 0 && state.firstCard.column < this.columns,
+                       `player ${playerId} firstCard column must be valid`);
+            }
+            if (state.secondCard !== null) {
+                assert(state.secondCard.row >= 0 && state.secondCard.row < this.rows,
+                       `player ${playerId} secondCard row must be valid`);
+                assert(state.secondCard.column >= 0 && state.secondCard.column < this.columns,
+                       `player ${playerId} secondCard column must be valid`);
+            }
+        }
+        
+        // RI: a card can only be controlled by one player at a time
+        const controlledPositions = new Map<string, string>();
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.columns; c++) {
+                const row = this.grid[r];
+                assert(row !== undefined);
+                const spot = row[c];
+                assert(spot !== undefined);
+                
+                if (spot.controller !== null) {
+                    const key = `${r},${c}`;
+                    assert(!controlledPositions.has(key),
+                           `position (${r},${c}) controlled by multiple players`);
+                    controlledPositions.set(key, spot.controller);
+                }
+            }
         }
     }
 
@@ -107,6 +172,15 @@ export class Board {
      * @param filename path to game board file
      * @returns a new board with the size and cards from the file
      * @throws Error if the file cannot be read or is not a valid game board
+     * 
+     * Preconditions:
+     * - filename is a valid file path
+     * - file format: first line "ROWSxCOLUMNS", followed by ROWS*COLUMNS card labels (one per line)
+     * 
+     * Postconditions:
+     * - Returns a new Board with dimensions and cards as specified in file
+     * - All cards are initially face-down and uncontrolled
+     * - Throws Error if file is missing, unreadable, or malformed
      */
     public static async parseFromFile(filename: string): Promise<Board> {
         const content = await fs.promises.readFile(filename, 'utf-8');
@@ -149,6 +223,19 @@ export class Board {
      * 
      * @param playerId the player viewing the board
      * @returns string representation of the board state
+     * 
+     * Preconditions:
+     * - playerId is a non-empty string
+     * 
+     * Postconditions:
+     * - Returns board state string in format:
+     *   "ROWSxCOLUMNS\n" followed by one line per card:
+     *   - "none" for removed cards
+     *   - "down" for face-down cards
+     *   - "my CARD" for cards controlled by playerId
+     *   - "up CARD" for face-up cards controlled by others or uncontrolled
+     * - Does not modify board state
+     * - Ensures playerId exists in players map (creates if needed)
      */
     public async look(playerId: string): Promise<string> {
         this.ensurePlayer(playerId);
@@ -163,26 +250,61 @@ export class Board {
      * @param column the column coordinate
      * @returns the new board state from player's perspective
      * @throws Error if flip fails per game rules
+     * 
+     * Preconditions:
+     * - playerId is a non-empty string
+     * - 0 <= row < rows
+     * - 0 <= column < columns
+     * 
+     * Postconditions:
+     * - If this is player's first card:
+     *   - Rule 1-A: throws Error if no card at position
+     *   - Rule 1-B: flips card face-up and takes control if face-down
+     *   - Rule 1-C: takes control if face-up but uncontrolled
+     *   - Rule 1-D: waits if controlled by another player, then retries once
+     * - If this is player's second card:
+     *   - Rule 2-A: throws Error if no card at position, relinquishes first card
+     *   - Rule 2-B: throws Error if card is controlled, relinquishes first card
+     *   - Rule 2-C: flips card face-up if needed
+     *   - Rule 2-D: if cards match, keeps control of both
+     *   - Rule 2-E: if cards don't match, relinquishes control of first card
+     * - Rule 3: if player has completed previous play, cleans it up first:
+     *   - Rule 3-A: removes matched cards
+     *   - Rule 3-B: turns non-matched cards face-down
+     * - Serializes flip operations per player (no interleaving for same player)
+     * - Returns updated board state string
      */
     public async flip(playerId: string, row: number, column: number): Promise<string> {
-        this.ensurePlayer(playerId);
-        const playerState = this.players.get(playerId);
-        assert(playerState !== undefined);
-        
-        // Rule 3: Finish previous play if starting a new one
-        // A "previous play" exists if we have matched cards OR uncontrolled cards from a failed match
-        if (playerState.matched || (playerState.firstCard !== null && playerState.secondCard !== null)) {
-            // Player completed a previous play, clean it up before starting new one
-            await this.finishPreviousPlay(playerId);
-        }
-        
-        if (playerState.firstCard === null) {
-            // Flipping first card
-            return await this.flipFirstCard(playerId, row, column);
-        } else {
-            // Flipping second card
-            return await this.flipSecondCard(playerId, row, column);
-        }
+        // Serialize flips per player to avoid race conditions from rapid clicks or network interleaving
+        return await this.runExclusive(playerId, async () => {
+            this.ensurePlayer(playerId);
+            const playerState = this.players.get(playerId);
+            assert(playerState !== undefined);
+
+            // Rule 3: Finish previous play if starting a new one
+            // Check if player already has a first card
+            if (playerState.firstCard !== null) {
+                const firstRow = this.grid[playerState.firstCard.row];
+                const firstSpot = firstRow?.[playerState.firstCard.column];
+                
+                // If the first card exists and is uncontrolled (player clicked same card twice),
+                // or if we have a completed play (both cards set or matched), clean it up
+                const isUncontrolled = firstSpot && firstSpot.controller === null;
+                const hasCompletedPlay = playerState.matched || playerState.secondCard !== null;
+                
+                if (isUncontrolled || hasCompletedPlay) {
+                    await this.finishPreviousPlay(playerId);
+                }
+            }
+
+            if (playerState.firstCard === null) {
+                // Flipping first card
+                return await this.flipFirstCard(playerId, row, column);
+            } else {
+                // Flipping second card
+                return await this.flipSecondCard(playerId, row, column);
+            }
+        });
     }
 
     /**
@@ -191,6 +313,19 @@ export class Board {
      * @param playerId the player applying the map
      * @param f transformation function
      * @returns the new board state
+     * 
+     * Preconditions:
+     * - playerId is a non-empty string
+     * - f is a mathematical function: f(c) returns same result for same input c
+     * - f(c) returns a valid card label
+     * 
+     * Postconditions:
+     * - Replaces every card label c on board with f(c)
+     * - Maintains pairwise consistency: all instances of same card transform identically
+     * - Does not affect card face-up/down state or controller
+     * - Notifies watchers if any cards changed
+     * - Can interleave with other operations without blocking
+     * - Returns updated board state string
      */
     public async map(playerId: string, f: (card: string) => Promise<string>): Promise<string> {
         this.ensurePlayer(playerId);
@@ -237,6 +372,15 @@ export class Board {
      * 
      * @param playerId the player watching
      * @returns the new board state after a change
+     * 
+     * Preconditions:
+     * - playerId is a non-empty string
+     * 
+     * Postconditions:
+     * - Blocks until board changes (cards flip up/down, removed, or labels change)
+     * - Returns updated board state string after change occurs
+     * - Multiple watchers are all notified of same change
+     * - Does not modify board state
      */
     public async watch(playerId: string): Promise<string> {
         this.ensurePlayer(playerId);
@@ -257,7 +401,8 @@ export class Board {
             this.players.set(playerId, {
                 firstCard: null,
                 secondCard: null,
-                matched: false
+                matched: false,
+                lastRevealed: new Set<string>()
             });
         }
     }
@@ -304,6 +449,9 @@ export class Board {
         spot.controller = playerId;
         playerState.firstCard = { row, column };
         
+        // Track this revealed card
+        playerState.lastRevealed.add(`${row},${column}`);
+        
         // After taking control, notify next waiter (if any) so they can check if they lost
         this.notifyCardAvailable(row, column);
         
@@ -339,10 +487,10 @@ export class Board {
         
         // Rule 2-B: controlled by a player (including self)
         if (spot.controller !== null) {
-            const firstCardPos = playerState.firstCard;
-            playerState.firstCard = null;
+            // Relinquish control but keep track of the card in player state
+            // so finishPreviousPlay will flip it down on next play
             firstSpot.controller = null;
-            this.notifyCardAvailable(firstCardPos.row, firstCardPos.column);
+            this.notifyCardAvailable(playerState.firstCard.row, playerState.firstCard.column);
             throw new Error('card is controlled');
         }
         
@@ -353,6 +501,9 @@ export class Board {
         }
         
         playerState.secondCard = { row, column };
+        
+        // Track this revealed card
+        playerState.lastRevealed.add(`${row},${column}`);
         
         // Check for match (Rule 2-D or 2-E)
         if (firstSpot.card === spot.card) {
@@ -402,29 +553,38 @@ export class Board {
             this.notifyWatchers();
             this.notifyCardAvailable(playerState.firstCard.row, playerState.firstCard.column);
             this.notifyCardAvailable(playerState.secondCard.row, playerState.secondCard.column);
-        } else if (playerState.secondCard !== null) {
-            // Rule 3-B: Turn non-matching cards face down
-            const secondRow = this.grid[playerState.secondCard.row];
-            assert(secondRow !== undefined);
-            const secondSpot = secondRow[playerState.secondCard.column];
-            assert(secondSpot !== undefined);
-            
-            if (firstSpot.card !== null && firstSpot.faceUp && firstSpot.controller === null) {
-                firstSpot.faceUp = false;
-                this.notifyWatchers();
-            }
-            if (secondSpot.card !== null && secondSpot.faceUp && secondSpot.controller === null) {
-                secondSpot.faceUp = false;
-                this.notifyWatchers();
-            }
         } else {
-            // Rule 3-B: Turn single card face down if not controlled
+            // Rule 3-B: Turn all previously revealed cards face down if still up and uncontrolled
+            let changed = false;
+            
+            // Flip down the first card if it's uncontrolled
             if (firstSpot.card !== null && firstSpot.faceUp && firstSpot.controller === null) {
                 firstSpot.faceUp = false;
+                changed = true;
+            }
+            
+            // Flip down any other revealed cards
+            for (const key of playerState.lastRevealed) {
+                const [rowStr, colStr] = key.split(',');
+                const r = parseInt(rowStr ?? '0');
+                const c = parseInt(colStr ?? '0');
+                const rowData = this.grid[r];
+                if (rowData !== undefined) {
+                    const spot = rowData[c];
+                    if (spot !== undefined && spot.card !== null && spot.faceUp && spot.controller === null) {
+                        spot.faceUp = false;
+                        changed = true;
+                    }
+                }
+            }
+            
+            if (changed) {
                 this.notifyWatchers();
             }
         }
         
+        // Clear the state for next play
+        playerState.lastRevealed.clear();
         playerState.firstCard = null;
         playerState.secondCard = null;
         playerState.matched = false;
@@ -484,6 +644,35 @@ export class Board {
         this.watchers.length = 0;
         for (const watcher of watchers) {
             watcher();
+        }
+    }
+
+    /**
+     * Run a task with a per-player mutex to ensure sequential flip operations for the same player.
+     * Different players can still operate concurrently.
+     */
+    private async runExclusive<T>(playerId: string, task: () => Promise<T>): Promise<T> {
+        const prev = this.playerLocks.get(playerId) ?? Promise.resolve();
+        let release: (() => void) | undefined;
+        const gate = new Promise<void>(resolve => { release = resolve; });
+        // Chain our gate after the previous promise
+        this.playerLocks.set(playerId, prev.then(() => gate));
+
+        // Wait for previous operations to finish
+        await prev;
+        try {
+            return await task();
+        } finally {
+            // Release our gate to allow the next queued operation (if any)
+            release?.();
+            // If nothing else is queued, cleanup the lock map entry eventually
+            // (safe to delete; future operations will recreate the chain)
+            // Note: we don't wait for gate to resolve here to avoid deadlocks
+            // under unexpected exceptions.
+            // Best-effort cleanup:
+            if (this.playerLocks.get(playerId) === gate) {
+                this.playerLocks.delete(playerId);
+            }
         }
     }
 
